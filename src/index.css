@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes modal-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes modal-out {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); }
+}
+.modal-animate-in {
+  animation: modal-in 0.3s ease-in-out;
+}
+.modal-animate-out {
+  animation: modal-out 0.3s ease-in-out;
+}
+
+@keyframes modal-open {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-modal-open {
+  animation: modal-open 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+
+@keyframes card-entry {
+  0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-card-entry {
+  animation: card-entry 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+.snap-in {
+  animation: snap-in 0.15s ease-in-out;
+}
+@keyframes snap-in {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.kanban-card {
+  transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+.kanban-card:hover {
+  box-shadow: 0 6px 32px 0 rgba(0,0,0,0.09), 0 1.5px 6px 0 rgba(0,0,0,0.07);
+  transform: scale(1.02);
+}
+
+.btn {
+  transition: background 0.18s ease-in-out, transform 0.1s cubic-bezier(0.4,0,0.2,1);
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.btn:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.checklist-strike {
+  position: relative;
+  display: inline-block;
+  color: inherit;
+}
+.checklist-strike::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 0; height: 2px;
+  background: currentColor;
+  transition: width 0.2s ease-in-out;
+  z-index: 1;
+}
+.checklist-strike.checked::after {
+  width: 100%;
+}
+
+.checklist-fade-out {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.transition-none {
+  transition: none !important;
+}
+
+body {
+  background-color: theme('colors.background');
+  font-family: theme('fontFamily.sans');
+}
