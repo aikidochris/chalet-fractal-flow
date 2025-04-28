@@ -70,7 +70,11 @@ function KanbanBoard() {
   };
   const handleAddCard = (status: string, title: string) => {
     const id = `card-${Date.now()}`;
-    setCards(c => [...c, { id, boardId: dummyBoard.id, title, description: '', status, pinned: false, hasSubBoard: false }]);
+    setCards(c => [{ id, boardId: dummyBoard.id, title, description: '', status, pinned: false, hasSubBoard: false }, ...c]);
+  };
+  const handleTogglePin = (cardId: string) => {
+    setCards(cardsList => cardsList.map(card => card.id === cardId ? { ...card, pinned: !card.pinned } : card));
+    setSelectedCard(sc => sc?.id === cardId ? { ...sc, pinned: !sc.pinned } : sc);
   };
 
   // Handle drag end: update local state
@@ -201,7 +205,7 @@ function KanbanBoard() {
           </div>
         </div>
         {selectedCard ? (
-          <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
+          <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} onTogglePin={handleTogglePin} />
         ) : null}
         <DepthLimitModal
           open={showDepthModal}

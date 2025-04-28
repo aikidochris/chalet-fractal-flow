@@ -65,7 +65,7 @@ let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCard
 
   return (
     <div className={`bg-gray-100 rounded-lg px-3 md:px-4 py-4 shadow-md flex flex-col min-h-[400px] max-w-[360px] min-w-[260px] flex-shrink-0 transition-all duration-150 ${isOver ? 'ring-2 ring-accent bg-accent/5' : ''}`}>
-      <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+      {/* Column header now rendered by parent; removed duplicate */}
       {/* Filter/Sort Controls */}
       <div className="flex gap-2 mb-3">
         <label className="flex items-center text-xs gap-1">
@@ -81,6 +81,20 @@ let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCard
           <option value="due">Sort: Due Date</option>
           <option value="title">Sort: Title A-Z</option>
         </select>
+      </div>
+      <div className="mt-4 mb-3">
+        <form className="flex gap-2" onSubmit={e => { e.preventDefault(); if (newCardTitle.trim()) { onAddCard(newCardTitle.trim()); setNewCardTitle(''); } }}>
+          <input
+            type="text"
+            value={newCardTitle}
+            onChange={e => setNewCardTitle(e.target.value)}
+            placeholder="New card title"
+            className="flex-1 px-2 py-1 border rounded"
+          />
+          <button type="submit" className="px-3 py-1 bg-accent text-white rounded disabled:opacity-50" disabled={!newCardTitle.trim()}>
+            Add
+          </button>
+        </form>
       </div>
       <div ref={setDroppableRef} className="flex flex-col gap-3">
         {filteredCards.length === 0 ? (
@@ -98,20 +112,6 @@ let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCard
             />
           ))
         )}
-      </div>
-      <div className="mt-4">
-        <form className="flex gap-2" onSubmit={e => { e.preventDefault(); if (newCardTitle.trim()) { onAddCard(newCardTitle.trim()); setNewCardTitle(''); } }}>
-          <input
-            type="text"
-            value={newCardTitle}
-            onChange={e => setNewCardTitle(e.target.value)}
-            placeholder="New card title"
-            className="flex-1 px-2 py-1 border rounded"
-          />
-          <button type="submit" className="px-3 py-1 bg-accent text-white rounded disabled:opacity-50" disabled={!newCardTitle.trim()}>
-            Add
-          </button>
-        </form>
       </div>
     </div>
   );

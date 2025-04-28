@@ -11,6 +11,6 @@ export interface CardProgress {
  * @returns { progress, tasksCount }
  */
 export function useCardProgress(cardId: string): { progress: number; tasksCount: number } {
-  // Dummy: always return 67% (2/3 complete)
-  return { progress: 67, tasksCount: 3 };
+  // Dummy: no tasks yet, progress starts at 0%
+  return { progress: 0, tasksCount: 0 };
 }

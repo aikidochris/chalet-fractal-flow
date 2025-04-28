@@ -27,10 +27,10 @@ const CardMenu: React.FC<CardMenuProps> = ({ anchorRef, color, onSetColor }) => 
   return (
     <div className="relative">
       <button
-        className="p-1 rounded hover:bg-gray-100 text-gray-500 focus:outline-accent"
+        className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 text-gray-500 focus:outline-accent"
         aria-label="Card actions"
-        onClick={() => setOpen(o => !o)}
         tabIndex={0}
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="10" cy="16" r="1.5" fill="currentColor"/></svg>
       </button>

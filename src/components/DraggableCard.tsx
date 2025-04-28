@@ -62,15 +62,29 @@ const DraggableCard: FC<DraggableCardProps> = ({ card, columnId, onCardClick, on
       {...attributes}
       onClick={() => { if (!isDragging) onCardClick(card); }}
       style={style}
-      className={`kanban-card rounded-card shadow-card px-4 py-3 border-l-4 ${card.pinned ? 'border-accent' : 'border-transparent'} max-w-full relative select-none animate-card-entry ${isDragging ? 'opacity-60 border-2 border-accent transition-none' : 'transition-shadow'}${snap ? ' snap-in' : ''}`}
+      className={`kanban-card rounded-card shadow-card px-4 py-3 border-l-4 ${card.pinned
+        ? 'border-emerald-300 hover:border-emerald-400 transition-colors duration-150'
+        : 'border-transparent'
+      } max-w-full relative select-none animate-card-entry ${isDragging
+        ? (card.pinned
+          ? 'opacity-60 border-2 border-emerald-500 transition-none'
+          : 'opacity-60 border-2 border-accent transition-none'
+        )
+        : 'transition-shadow'
+      }${snap ? ' snap-in' : ''}`}
     >
       <div className="flex items-start justify-between cursor-pointer group" ref={cardRef}>
-  <span className="font-medium text-gray-800 break-words max-w-full line-clamp-3 overflow-hidden text-ellipsis whitespace-pre-line leading-snug" title={card.title}>{card.title}</span>
-  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-10">
-    <CardMenu anchorRef={cardRef} color={localColor} onSetColor={handleSetColor} />
-  </div>
-  {card.pinned && <span className="absolute top-2 right-8 text-[10px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded shadow-sm">PINNED</span>}
-</div>
+        <span className="font-medium text-gray-800 break-words max-w-full line-clamp-3 overflow-hidden text-ellipsis whitespace-pre-line leading-snug" title={card.title}>{card.title}</span>
+        {/* Always show menu button, stop propagation to prevent modal open */}
+        <div className="absolute top-2 right-2 z-10">
+          <CardMenu anchorRef={cardRef} color={localColor} onSetColor={handleSetColor} />
+        </div>
+        {card.pinned && (
+          <span className="absolute top-2 right-8 flex items-center text-[10px] text-green-700 font-bold bg-green-100 px-2 py-0.5 rounded shadow-sm transition-colors duration-150 hover:bg-green-200">
+            <span className="mr-1">📌</span>PINNED
+          </span>
+        )}
+      </div>
       {card.dueDate && <div className="text-xs text-gray-500 mt-1">Due: {card.dueDate}</div>}
       <div className="mt-2 flex gap-2">
         {idx > 0 && (

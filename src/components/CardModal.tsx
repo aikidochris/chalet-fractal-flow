@@ -12,9 +12,10 @@ interface TaskData {
 interface CardModalProps {
   card: CardData;
   onClose: () => void;
+  onTogglePin: (cardId: string) => void;
 }
 
-function CardModal({ card, onClose }: CardModalProps) {
+function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
   if (!card) {
     return <div className="p-8 text-center text-gray-400">Loading card...</div>;
   }
@@ -71,12 +72,9 @@ function CardModal({ card, onClose }: CardModalProps) {
 
 
 
-  // Dummy-data mode: no Firestore. If you want to simulate subtasks, you can setTasks([...]) here.
+  // Dummy-data mode: reset tasks to empty on card change
   useEffect(() => {
-    setTasks([
-      { id: 'task-1', title: 'Research topic', completed: false },
-      { id: 'task-2', title: 'Write draft', completed: true },
-    ]);
+    setTasks([]); // No default subtasks
     setTitle(card.title);
     setDueDate(card.dueDate || '');
   }, [card.id]);
@@ -93,11 +91,8 @@ function CardModal({ card, onClose }: CardModalProps) {
   };
 
   // Toggle pin
-  const handleTogglePin = async () => {
-    // Dummy: Just toggle local state
-    // Optionally update local card state here if needed
-    setTitle(card.title);
-    setDueDate(card.dueDate || '');
+  const handleTogglePin = () => {
+    onTogglePin(card.id);
   };
 
   // Update due date (live update local state, save on Save)
