@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
-
-export interface CardProgress {
-  progress: number;
-  tasksCount: number;
-}
+import type { TaskData } from './CardModal';
 
 /**
  * useCardProgress - React hook for live card progress (percent and total tasks)
- * @param cardId string
+ * @param tasks TaskData[] - Array of tasks for the card
  * @returns { progress, tasksCount }
  */
-export function useCardProgress(cardId: string): { progress: number; tasksCount: number } {
-  // Dummy: no tasks yet, progress starts at 0%
-  return { progress: 0, tasksCount: 0 };
+export function useCardProgress(tasks: TaskData[]): { progress: number; tasksCount: number } {
+  const tasksCount = tasks.length;
+  const completedCount = tasks.filter(task => task.completed).length;
+  const progress = tasksCount > 0 ? Math.round((completedCount / tasksCount) * 100) : 0;
+
+  return { progress, tasksCount };
 }

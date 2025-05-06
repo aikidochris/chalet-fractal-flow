@@ -37,28 +37,48 @@ const CardColorPopover: React.FC<CardColorPopoverProps> = ({ open, anchorEl, sel
   // Close on click outside
   useEffect(() => {
     if (!open) return;
+    
     function handle(event: MouseEvent) {
       if (
         popoverRef.current &&
         !popoverRef.current.contains(event.target as Node) &&
-        anchorEl &&
-        !anchorEl.contains(event.target as Node)
+        event.type === 'mousedown'
       ) {
         onClose();
       }
     }
+    
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [open, anchorEl, onClose]);
+  }, [open, onClose]);
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
   };
 
+  // Add mouse enter/leave handlers to prevent flickering
+  const handleMouseEnter = () => {
+    if (popoverRef.current) {
+      popoverRef.current.style.pointerEvents = 'auto';
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (popoverRef.current) {
+      popoverRef.current.style.pointerEvents = 'auto';
+    }
+  };
+
   if (!open) return null;
   return (
-    <div ref={popoverRef} onKeyDown={handleKeyDown} className="bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex gap-2" role="menu" aria-label="Set card color">
+    <div 
+      ref={popoverRef} 
+      className="bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex gap-2" 
+      role="menu" 
+      aria-label="Set card color"
+      onClick={(e) => e.stopPropagation()}
+    >
       {COLORS.map((color, i) => (
         <button
           key={color.name}

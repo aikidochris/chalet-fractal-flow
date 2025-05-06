@@ -1,5 +1,6 @@
 import React, { FC, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { CardData } from './KanbanBoard';
 import DraggableCard from './DraggableCard';
 
@@ -13,6 +14,7 @@ interface KanbanColumnProps {
   isDragging: boolean;
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
   isDraggingCard: string | null;
+  columns: Array<{ id: string; title: string }>;
 }
 
 const STATUSES = ['Ideas', 'In Progress', 'Completed'];
@@ -30,6 +32,7 @@ const KanbanColumn: FC<KanbanColumnProps> = ({
   isDragging,
   setIsDragging,
   isDraggingCard,
+  columns,
 }) => {
   // Filter/sort state
   const [showPinnedOnly, setShowPinnedOnly] = React.useState(false);
@@ -37,7 +40,7 @@ const KanbanColumn: FC<KanbanColumnProps> = ({
 
   // Filter and sort cards
   let safeCards = Array.isArray(cards) ? cards : [];
-let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCards;
+  let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCards;
   if (sortMode === 'due') {
     filteredCards = [...filteredCards].sort((a, b) => {
       if (!a.dueDate && !b.dueDate) return 0;
@@ -52,7 +55,13 @@ let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCard
   const [newCardTitle, setNewCardTitle] = useState<string>('');
 
   // droppable area for this column
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: columnId });
+  const { setNodeRef, isOver } = useDroppable({
+    id: columnId,
+    data: {
+      type: 'column',
+      accepts: ['card']
+    }
+  });
   const [justDropped, setJustDropped] = React.useState<string | null>(null);
 
   // Snap animation: when a card is dropped into this column, animate it
@@ -64,8 +73,7 @@ let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCard
   }, [isOver, isDraggingCard, cards]);
 
   return (
-    <div className={`bg-gray-100 rounded-lg px-3 md:px-4 py-4 shadow-md flex flex-col min-h-[400px] max-w-[360px] min-w-[260px] flex-shrink-0 transition-all duration-150 ${isOver ? 'ring-2 ring-accent bg-accent/5' : ''}`}>
-      {/* Column header now rendered by parent; removed duplicate */}
+    <div className={`bg-gray-100 rounded-lg px-3 md:px-4 py-4 shadow-md flex flex-col min-h-[400px] max-w-[360px] min-w-[260px] flex-shrink-0 transition-all duration-200 ${isOver ? 'ring-2 ring-accent bg-accent/10 scale-[1.02]' : ''}`}>
       {/* Filter/Sort Controls */}
       <div className="flex gap-2 mb-3">
         <label className="flex items-center text-xs gap-1">
@@ -96,21 +104,30 @@ let filteredCards = showPinnedOnly ? safeCards.filter(c => c?.pinned) : safeCard
           </button>
         </form>
       </div>
-      <div ref={setDroppableRef} className="flex flex-col gap-3">
+      <div 
+        className="flex flex-col gap-3 h-full overflow-y-auto py-1 px-1"
+        ref={setNodeRef}
+      >
         {filteredCards.length === 0 ? (
           <div className="text-gray-400 text-xs text-center py-4">No cards yet.</div>
         ) : (
-          filteredCards.map(card => (
-            <DraggableCard
-              key={card.id}
-              card={card}
-              columnId={columnId}
-              onCardClick={onCardClick}
-              onMoveCard={onMoveCard}
-              isDragging={isDragging && isDraggingCard === card.id}
-              snap={justDropped === card.id}
-            />
-          ))
+          <SortableContext 
+            items={filteredCards.map(card => card.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {filteredCards.map(card => (
+              <DraggableCard
+                key={card.id}
+                card={card}
+                columnId={columnId}
+                onCardClick={onCardClick}
+                onMoveCard={onMoveCard}
+                isDragging={isDragging && isDraggingCard === card.id}
+                snap={justDropped === card.id}
+                columns={columns}
+              />
+            ))}
+          </SortableContext>
         )}
       </div>
     </div>

@@ -1,41 +1,33 @@
-import React, { useState, useEffect } from 'react';
-// import { db } from '../firebase';
-// import { collection, query, onSnapshot, updateDoc, addDoc, doc, serverTimestamp, orderBy, deleteDoc } from 'firebase/firestore';
+import React, { useState, useEffect, useRef } from 'react';
 import { CardData } from './KanbanBoard';
+import { useCardProgress } from './useCardProgress';
+import CardColorPopover from './CardColorPopover';
 
-interface TaskData {
+export interface TaskData {
   id: string;
   title: string;
   completed: boolean;
 }
 
 interface CardModalProps {
-  card: CardData;
+  card: CardData & { tasks?: TaskData[] };
   onClose: () => void;
   onTogglePin: (cardId: string) => void;
+  onUpdateTasks: (cardId: string, tasks: TaskData[]) => void;
+  onDelete?: (cardId: string) => void;
+  onSetColor?: (color: string) => void;
 }
 
-function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
+function CardModal({ card, onClose, onTogglePin, onUpdateTasks, onDelete, onSetColor }: CardModalProps) {
   if (!card) {
     return <div className="p-8 text-center text-gray-400">Loading card...</div>;
   }
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-
-  // Close menu on outside click
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [menuOpen]);
-  const [tasks, setTasks] = useState<TaskData[]>([]);
-  const [fadingTaskIds, setFadingTaskIds] = useState<string[]>([]);
+  const [tasks, setTasks] = useState<TaskData[]>(card.tasks || []);
   const [newTask, setNewTask] = useState('');
+  const [fadingTaskIds, setFadingTaskIds] = useState<string[]>([]);
+  const [closing, setClosing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState(card?.title || '');
   const [dueDate, setDueDate] = useState(card?.dueDate || '');
@@ -44,7 +36,7 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
   // For click-off-to-close
   const modalContentRef = React.useRef<HTMLDivElement>(null);
-  const [closing, setClosing] = useState(false);
+  const menuButtonRef = React.useRef<HTMLButtonElement>(null);
 
   // Handle modal close with animation
   const handleModalClose = () => {
@@ -58,6 +50,9 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
   // Delete card
   const handleDeleteCard = async () => {
     // Dummy: Just close modal
+    if (onDelete) {
+      onDelete(card.id);
+    }
     onClose();
   };
 
@@ -67,6 +62,7 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
     setTimeout(() => {
       setTasks(t => t.filter(task => task.id !== taskId));
       setFadingTaskIds(ids => ids.filter(id => id !== taskId));
+      onUpdateTasks(card.id, tasks.filter(task => task.id !== taskId));
     }, 300);
   };
 
@@ -74,20 +70,36 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
 
   // Dummy-data mode: reset tasks to empty on card change
   useEffect(() => {
-    setTasks([]); // No default subtasks
+    setTasks(card.tasks || []); // No default subtasks
     setTitle(card.title);
     setDueDate(card.dueDate || '');
   }, [card.id]);
 
   // Progress calculation
-  const completedCount = tasks.filter(t => t.completed).length;
-  const progress = tasks.length ? (completedCount / tasks.length) * 100 : 0;
+  const { progress } = useCardProgress(tasks);
 
   // Add new task
-  const handleAddTask = async () => {
+  const handleAddTask = () => {
     if (!newTask.trim()) return;
-    setTasks(t => [...t, { id: `task-${Date.now()}`, title: newTask.trim(), completed: false }]);
+    const updatedTasks = [...tasks, { 
+      id: `task-${Date.now()}`, 
+      title: newTask.trim(), 
+      completed: false 
+    }];
+    setTasks(updatedTasks);
+    onUpdateTasks(card.id, updatedTasks);
     setNewTask('');
+  };
+
+  // Toggle task completion
+  const handleToggleTask = (taskId: string) => {
+    const updatedTasks = tasks.map(task => 
+      task.id === taskId 
+        ? { ...task, completed: !task.completed } 
+        : task
+    );
+    setTasks(updatedTasks);
+    onUpdateTasks(card.id, updatedTasks);
   };
 
   // Toggle pin
@@ -120,6 +132,7 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
   const handleTaskTitleBlur = async (task: TaskData) => {
     if (editingTaskTitle.trim() && editingTaskTitle !== task.title) {
       setTasks(t => t.map(tsk => tsk.id === task.id ? { ...tsk, title: editingTaskTitle.trim() } : tsk));
+      onUpdateTasks(card.id, tasks.map(tsk => tsk.id === task.id ? { ...tsk, title: editingTaskTitle.trim() } : tsk));
     }
     setEditingTaskId(null);
     setEditingTaskTitle('');
@@ -134,6 +147,24 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
     }
   };
 
+  const colorMap: Record<string, { bg: string; border: string; text: string }> = {
+    default: { bg: '#fff', border: '#e5e7eb', text: '#222' },
+    blue:    { bg: '#e0edfa', border: '#60a5fa', text: '#1e293b' },
+    green:   { bg: '#e5f6e7', border: '#34d399', text: '#14532d' },
+    yellow:  { bg: '#fffbe5', border: '#fbbf24', text: '#78350f' },
+    red:     { bg: '#fdeaea', border: '#f87171', text: '#7f1d1d' },
+    purple:  { bg: '#f3e8ff', border: '#a78bfa', text: '#4b006e' },
+    grey:    { bg: '#f3f4f6', border: '#9ca3af', text: '#222' },
+  };
+  const colorKey = card.color || 'default';
+  const color = colorMap[colorKey] || colorMap.default;
+
+  const modalStyle = {
+    background: color.bg,
+    borderColor: color.border,
+    color: color.text,
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
@@ -143,12 +174,9 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
     >
       <div
         ref={modalContentRef}
-        className={`bg-white rounded-lg p-6 w-full max-w-md flex flex-col transition-transform transition-opacity duration-200 ease-in-out ${closing ? 'modal-animate-out' : 'modal-animate-in'}`}
-        tabIndex={-1}
+        className={`relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 my-8 p-6 transition-all duration-300 ${closing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
+        style={modalStyle}
         onClick={e => e.stopPropagation()}
-        onKeyDown={e => {
-          if (e.key === 'Escape') handleModalClose();
-        }}
       >
         <header className="flex justify-between items-start gap-4 mb-4">
           <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -175,20 +203,40 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
             )}
           </div>
           {/* Three dots menu for close/delete */}
-          <div className="relative" ref={menuRef}>
-            <button onClick={() => setMenuOpen(o => !o)} className="btn w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-accent" aria-haspopup="true" aria-expanded={menuOpen} aria-label="Card options" type="button">
-              <span aria-hidden="true" className="text-xl">•••</span>
+          <div className="relative" >
+            <button 
+              ref={menuButtonRef}
+              className="p-2 rounded-full hover:bg-gray-100"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="10" cy="16" r="1.5" fill="currentColor"/></svg>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50" role="menu">
-                <button onClick={() => { setMenuOpen(false); handleModalClose(); }} className="btn w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800" role="menuitem">
-                  Close without saving
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  onClick={() => {
+                    setColorPopoverOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  Set Colour
                 </button>
-                <button onClick={() => { setMenuOpen(false); if (window.confirm('Delete this card?')) handleDeleteCard(); }} className="btn w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600" role="menuitem">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  onClick={handleDeleteCard}
+                >
                   Delete Card
                 </button>
               </div>
             )}
+            <CardColorPopover
+              open={colorPopoverOpen}
+              anchorEl={menuButtonRef.current}
+              selected={card.color || 'default'}
+              onSelect={(color) => onSetColor?.(color)}
+              onClose={() => setColorPopoverOpen(false)}
+            />
           </div>
         </header>
         {card.description && <p className="mb-4 text-gray-700">{card.description}</p>}
@@ -215,7 +263,7 @@ function CardModal({ card, onClose, onTogglePin }: CardModalProps) {
                 <input
                   type="checkbox"
                   checked={task.completed}
-                  onChange={() => setTasks(t => t.map(tsk => tsk.id === task.id ? { ...tsk, completed: !tsk.completed } : tsk))}
+                  onChange={() => handleToggleTask(task.id)}
                 />
                 {editingTaskId === task.id ? (
                   <input

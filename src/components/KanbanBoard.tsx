@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import { TaskData } from './CardModal';
 import {
   DndContext,
   PointerSensor,
   useSensor,
   useSensors,
   closestCenter,
-  DragEndEvent
+  DragEndEvent,
+  DragOverlay,
 } from '@dnd-kit/core';
+import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 import KanbanColumn from './KanbanColumn';
 import NewColumnModal from './NewColumnModal';
@@ -27,6 +30,7 @@ export interface CardData {
   hasSubBoard: boolean;
   subBoardId?: string;
   color?: string; // pastel color key
+  tasks?: TaskData[];
 }
 
 export interface BoardState {
@@ -58,6 +62,7 @@ function KanbanBoard() {
   const [renamingColumnId, setRenamingColumnId] = useState<string | null>(null);
   const newColumnBtnRef = useRef<HTMLButtonElement>(null);
   const [selectedCard, setSelectedCard] = useState<CardData | null>(null);
+  const [activeCard, setActiveCard] = useState<CardData | null>(null);
 
   // Override drag sensors (no change)
   const sensors = useSensors(
@@ -66,7 +71,11 @@ function KanbanBoard() {
 
   // Handlers operate on local dummy state
   const handleMoveCard = (card: CardData, newStatus: string) => {
-    setCards(c => c.map(x => x.id === card.id ? { ...x, status: newStatus } : x));
+    setCards(c => {
+      const updatedCards = c.map(x => x.id === card.id ? { ...x, status: newStatus } : x);
+      // Force state update by creating new array reference
+      return [...updatedCards];
+    });
   };
   const handleAddCard = (status: string, title: string) => {
     const id = `card-${Date.now()}`;
@@ -77,16 +86,51 @@ function KanbanBoard() {
     setSelectedCard(sc => sc?.id === cardId ? { ...sc, pinned: !sc.pinned } : sc);
   };
 
+  const handleUpdateTasks = (cardId: string, tasks: TaskData[]) => {
+    setCards(cards => cards.map(card => 
+      card.id === cardId ? { ...card, tasks } : card
+    ));
+    if (selectedCard?.id === cardId) {
+      setSelectedCard(prev => prev ? { ...prev, tasks } : null);
+    }
+  };
+
+  const handleSetColor = (cardId: string, color: string) => {
+    setCards(cards => cards.map(card => 
+      card.id === cardId ? { ...card, color } : card
+    ));
+    if (selectedCard?.id === cardId) {
+      setSelectedCard(prev => prev ? { ...prev, color } : null);
+    }
+  };
+
+  const handleDeleteCard = (cardId: string) => {
+    setCards(cards => cards.filter(c => c.id !== cardId));
+    setSelectedCard(null);
+  };
+
   // Handle drag end: update local state
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
-    const newStatus = over.id as string;
-    const cardId = active.id as string;
-    if (columns.some((c) => c.id === newStatus)) {
-      const card = cards.find((c) => c.id === cardId);
-      if (card && card.status !== newStatus) {
-        handleMoveCard(card, newStatus);
+    
+    // Check if we're moving between columns or reordering within same column
+    if (active.data.current?.type === 'card' && over.data.current?.type === 'column') {
+      // Moving between columns
+      const newStatus = over.id as string;
+      const cardId = active.id as string;
+      const card = cards.find(c => c.id === cardId);
+      if (card) handleMoveCard(card, newStatus);
+    } else if (active.data.current?.type === 'card' && over.data.current?.type === 'card') {
+      // Reordering within same column
+      const oldIndex = cards.findIndex(c => c.id === active.id);
+      const newIndex = cards.findIndex(c => c.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1 && cards[oldIndex].status === cards[newIndex].status) {
+        const newCards = [...cards];
+        const [removed] = newCards.splice(oldIndex, 1);
+        newCards.splice(newIndex, 0, removed);
+        setCards(newCards);
       }
     }
   };
@@ -98,14 +142,21 @@ function KanbanBoard() {
       collisionDetection={closestCenter}
       onDragStart={event => {
         setIsDragging(true);
-        if (event && event.active && event.active.id) {
-          setIsDraggingCard(String(event.active.id));
+        if (event.active.data.current?.type === 'card') {
+          setActiveCard(event.active.data.current.card);
+          setIsDraggingCard(event.active.id as string);
         }
       }}
-      onDragEnd={event => {
+      onDragEnd={(event) => {
+        handleDragEnd(event);
+        setActiveCard(null);
         setIsDragging(false);
         setIsDraggingCard(null);
-        handleDragEnd(event);
+      }}
+      onDragCancel={() => {
+        setActiveCard(null);
+        setIsDragging(false);
+        setIsDraggingCard(null);
       }}
     >
       <div className="bg-background rounded-xl shadow-card p-6">
@@ -152,6 +203,7 @@ function KanbanBoard() {
                     )}
                   </div>
                   <KanbanColumn
+                    key={col.id}
                     columnId={col.id}
                     title={col.title}
                     cards={cards.filter((c: CardData) => c.status === col.id)}
@@ -171,6 +223,7 @@ function KanbanBoard() {
                     isDragging={isDragging}
                     setIsDragging={setIsDragging}
                     isDraggingCard={isDraggingCard}
+                    columns={columns}
                   />
                 </div>
               );
@@ -205,13 +258,27 @@ function KanbanBoard() {
           </div>
         </div>
         {selectedCard ? (
-          <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} onTogglePin={handleTogglePin} />
+          <CardModal 
+            card={selectedCard} 
+            onClose={() => setSelectedCard(null)} 
+            onTogglePin={handleTogglePin}
+            onUpdateTasks={handleUpdateTasks}
+            onSetColor={(color: string) => handleSetColor(selectedCard.id, color)}
+            onDelete={() => handleDeleteCard(selectedCard.id)}
+          />
         ) : null}
         <DepthLimitModal
           open={showDepthModal}
           onCancel={() => setShowDepthModal(false)}
           onConfirm={() => setShowDepthModal(false)}
         />
+        <DragOverlay>
+          {activeCard ? (
+            <div className="kanban-card rounded-card shadow-lg px-4 py-3 border-l-4 border-accent bg-white opacity-90 transform scale-105">
+              <div className="font-medium text-gray-800">{activeCard.title}</div>
+            </div>
+          ) : null}
+        </DragOverlay>
       </div>
     </DndContext>
   );
